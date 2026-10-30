@@ -1,0 +1,22 @@
+# secrets & local exports — never push
+.env
+.env.*
+*.pem
+secrets/
+**/secrets/
+opencode*.txt
+*api*key*
+*.local.json
+feedback-export*.json
+replyFeedback*.json
+settings-export*.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# packs
+*.zip
