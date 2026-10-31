@@ -65,11 +65,14 @@
   <h1>X 回复助手</h1>
   <p>生成 3 条草稿，或点「多角度」出 5 条可选角度。仅复制/填入，不代发。</p>
   <button type="button" id="openOptions">打开设置（API Key）</button>
+  <button type="button" class="secondary" id="openNonFollow">未回关（只读）</button>
   <div class="status" id="status">检查配置中…</div>
+  <div class="status" id="nfStatus"></div>
   <div class="section-title">今日待回</div>
   <p class="note">尽力从通知/提及页抓取；可能漏检。打开对应帖后自己回复，或点「已回 / 忽略」。</p>
   <div id="inboxList"></div>
   <div id="inboxEmpty">加载中…</div>
+  <script src="nonfollow-core.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -362,3 +362,116 @@ document.getElementById("clearFeedback")?.addEventListener("click", async () => 
 });
 
 refreshFeedbackMeta();
+
+const nfCapEl = document.getElementById("nfCap");
+const nfMetaEl = document.getElementById("nfMeta");
+const nfListEl = document.getElementById("nfList");
+const NF_CAP_KEY = "xrhNonFollowCap";
+const NF_KEY = "xrhNonFollow";
+let nfDisplay = 40;
+
+function nfWhen(ts) {
+  if (!ts) return "";
+  const date = new Date(ts);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}`;
+}
+
+function renderNonFollow(stored) {
+  if (!nfListEl || !nfMetaEl || !window.XrhNonFollow) return;
+  nfListEl.textContent = "";
+  if (!window.XrhNonFollow.isStoredResult(stored)) {
+    nfMetaEl.textContent = "尚未扫描。打开 x.com 后点「在 x.com 打开未回关」。";
+    return;
+  }
+  const when = nfWhen(stored.scannedAt);
+  const who = stored.self?.handle ? " @" + stored.self.handle : "";
+  nfMetaEl.textContent =
+    `上次 ${when}${who} · 未回关 ${stored.items.length} 个 · 已扫关注 ${stored.followingScanned || 0}` +
+    (stored.note ? "。" + stored.note : "");
+  const slice = stored.items.slice(0, nfDisplay);
+  for (const item of slice) {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--border);";
+    const text = document.createElement("div");
+    const name = document.createElement("div");
+    name.textContent = item.name || item.handle || item.id;
+    const meta = document.createElement("div");
+    meta.style.cssText = "font-size:12px;color:var(--muted);";
+    const fans = item.followersCount == null ? "" : " · 粉丝 " + window.XrhNonFollow.formatCount(item.followersCount);
+    meta.textContent = (item.handle ? "@" + item.handle : "ID " + item.id) + fans;
+    text.appendChild(name);
+    text.appendChild(meta);
+    const link = document.createElement("a");
+    link.href = window.XrhNonFollow.profileUrl(item);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "打开";
+    link.style.color = "var(--accent)";
+    row.appendChild(text);
+    row.appendChild(link);
+    nfListEl.appendChild(row);
+  }
+  if (stored.items.length > slice.length) {
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "secondary";
+    more.style.marginTop = "8px";
+    more.textContent = `再显示一批（${slice.length}/${stored.items.length}）`;
+    more.addEventListener("click", () => {
+      nfDisplay += 40;
+      renderNonFollow(stored);
+    });
+    nfListEl.appendChild(more);
+  }
+}
+
+async function loadNonFollow() {
+  const stored = await chrome.storage.local.get({
+    [NF_CAP_KEY]: 2000,
+    [NF_KEY]: null,
+  });
+  if (nfCapEl) nfCapEl.value = String(window.XrhNonFollow.clampCap(stored[NF_CAP_KEY]));
+  renderNonFollow(stored[NF_KEY]);
+}
+
+nfCapEl?.addEventListener("change", async () => {
+  const cap = window.XrhNonFollow.clampCap(nfCapEl.value);
+  nfCapEl.value = String(cap);
+  await chrome.storage.local.set({ [NF_CAP_KEY]: cap });
+  showMsg("未回关扫描上限已设为 " + cap + "。", true);
+});
+
+document.getElementById("nfOpen")?.addEventListener("click", async () => {
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "OPEN_NONFOLLOW" });
+    showMsg(result?.ok ? "已打开 x.com 上的未回关面板。" : (result?.error || "打不开"), !!result?.ok);
+  } catch (err) {
+    showMsg(String(err?.message || err), false);
+  }
+});
+
+document.getElementById("nfExport")?.addEventListener("click", async () => {
+  const stored = await chrome.storage.local.get({ [NF_KEY]: null });
+  const data = stored[NF_KEY];
+  if (!window.XrhNonFollow.isStoredResult(data) || !data.items.length) {
+    showMsg("没有可导出的未回关结果。", false);
+    return;
+  }
+  const blob = new Blob([window.XrhNonFollow.toCsv(data.items)], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "xrh-nonfollow.csv";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+});
+
+document.getElementById("nfClear")?.addEventListener("click", async () => {
+  if (!confirm("清空本机保存的未回关结果？")) return;
+  await chrome.storage.local.remove(NF_KEY);
+  nfDisplay = 40;
+  renderNonFollow(null);
+  showMsg("已清空未回关结果。", true);
+});
+
+loadNonFollow();

@@ -2,6 +2,40 @@ document.getElementById("openOptions").addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
 
+document.getElementById("openNonFollow").addEventListener("click", async () => {
+  const el = document.getElementById("nfStatus");
+  el.className = "status";
+  el.textContent = "正在打开…";
+  try {
+    const result = await chrome.runtime.sendMessage({ type: "OPEN_NONFOLLOW" });
+    if (!result?.ok) {
+      el.className = "status err";
+      el.textContent = result?.error || "打不开未回关";
+      return;
+    }
+    el.className = "status ok";
+    el.textContent = "已在 x.com 打开。点「扫描未回关」，只列出、不取关。";
+  } catch (err) {
+    el.className = "status err";
+    el.textContent = "打不开未回关";
+  }
+});
+
+(async () => {
+  const el = document.getElementById("nfStatus");
+  try {
+    const stored = await chrome.storage.local.get({ xrhNonFollow: null });
+    const data = stored.xrhNonFollow;
+    if (!window.XrhNonFollow?.isStoredResult(data)) return;
+    const when = new Date(data.scannedAt);
+    const hh = String(when.getHours()).padStart(2, "0");
+    const mm = String(when.getMinutes()).padStart(2, "0");
+    el.textContent = `上次未回关 ${data.items.length} 个 · ${when.getMonth() + 1}/${when.getDate()} ${hh}:${mm}`;
+  } catch {
+    /* 没有旧结果时保持空白 */
+  }
+})();
+
 (async () => {
   const status = document.getElementById("status");
   try {
