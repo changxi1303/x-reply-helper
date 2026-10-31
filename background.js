@@ -6,7 +6,7 @@
 
 const DEFAULT_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-4o-mini";
-const EXT_UA = "x-reply-helper/1.5.2";
+const EXT_UA = "x-reply-helper/1.6.0";
 
 const DEFAULT_PERSONA = `我是中文评论区随手回一句的普通人。说话像朋友刷到顺手打字：具体、短、有判断，不端着。
 
@@ -265,7 +265,7 @@ function looksTemplate(text) {
   ) || /(首先|其次|总之|综上所述|值得注意的是|作为\s*AI|希望.{0,6}帮助)/i.test(text);
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "GENERATE_REPLIES") {
     generateReplies(message.payload)
       .then((result) => sendResponse(result))
@@ -315,6 +315,28 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     chrome.runtime.openOptionsPage();
     sendResponse({ ok: true });
     return false;
+  }
+  if (message?.type === "INJECT_NONFOLLOW_PAGE") {
+    const tabId = sender?.tab?.id;
+    if (!tabId) {
+      sendResponse({ ok: false, error: "没有可扫描的 x.com 页面" });
+      return false;
+    }
+    chrome.scripting
+      .executeScript({
+        target: { tabId, frameIds: [sender.frameId || 0] },
+        files: ["nonfollow-page.js"],
+        world: "MAIN",
+      })
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err?.message || "无法接入页面登录态" }));
+    return true;
+  }
+  if (message?.type === "OPEN_NONFOLLOW") {
+    openNonFollowPanel()
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ ok: false, error: err?.message || String(err) }));
+    return true;
   }
   if (message?.type === "INBOX_UPSERT") {
     upsertInboxItems(message.payload?.items || [])
@@ -878,6 +900,33 @@ async function markInboxReplied(id, statusId) {
   }
   const saved = await writeInboxStore(box);
   return listTodayUnrepliedFrom(saved);
+}
+
+/** 打开已登录的 x.com 标签，并让页面显示只读「未回关」面板。不取关。 */
+async function openNonFollowPanel() {
+  const tabs = await chrome.tabs.query({ url: ["https://x.com/*", "https://twitter.com/*"] });
+  if (!tabs.length) {
+    return { ok: false, error: "请先打开并登录 x.com，再点一次。" };
+  }
+  let active = null;
+  try {
+    const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    active = activeTabs?.[0] || null;
+  } catch {
+    active = null;
+  }
+  const tab = tabs.find((item) => item.id === active?.id) || tabs[0];
+  try {
+    await chrome.tabs.update(tab.id, { active: true });
+  } catch {
+    /* 标签可能已关闭 */
+  }
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "OPEN_NONFOLLOW" });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "页面还没载入扩展。请刷新该 x.com 标签后再点一次。" };
+  }
 }
 
 async function clearTodayDismissedOnly() {

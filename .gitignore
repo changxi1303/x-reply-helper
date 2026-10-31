@@ -8,6 +8,7 @@ opencode*.txt
 *api*key*
 *.local.json
 feedback-export*.json
+xrh-nonfollow*.csv
 replyFeedback*.json
 settings-export*.json
 

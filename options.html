@@ -221,6 +221,27 @@
     </div>
 
     <div class="card">
+      <strong>未回关</strong>
+      <p class="hint">只读名单：你关注了、对方没有回关。扫描发生在已登录的 x.com 页面，复用浏览器登录态，不需要另外的 API Key，也不会自动取关或关注。</p>
+      <label for="nfCap">关注扫描上限</label>
+      <p class="hint">默认 2000。越大越慢，也更容易碰到 X 的频率限制。结果只存在本机（chrome.storage.local），不会同步。</p>
+      <select id="nfCap">
+        <option value="200">200</option>
+        <option value="500">500</option>
+        <option value="2000">2000（推荐）</option>
+        <option value="5000">5000</option>
+        <option value="10000">10000</option>
+      </select>
+      <div class="row">
+        <button type="button" id="nfOpen">在 x.com 打开未回关</button>
+        <button type="button" class="secondary" id="nfExport">导出 CSV</button>
+        <button type="button" class="secondary" id="nfClear">清空结果</button>
+      </div>
+      <p class="hint" id="nfMeta">尚未扫描。</p>
+      <div id="nfList"></div>
+    </div>
+
+    <div class="card">
       <strong>怎么用</strong>
       <ul>
         <li>打开帖子页或点回复打开 compose 弹窗</li>
@@ -229,11 +250,13 @@
         <li>可选：自动生成 / 同帖缓存 / 自动填入 / <strong>回复后点赞</strong>（默认关）/ 快速模式（默认开）/ 质量优先</li>
         <li>生成时会带上线程上文 + 本页同作者近帖（若 DOM 可见）</li>
         <li>复制或「填入回复框」后，再自己点发送（扩展不会代发）</li>
+        <li><strong>未回关</strong>：在已登录的 x.com 打开面板，点「扫描未回关」。只列出并打开主页，不会自动取关</li>
         <li>每条草稿可点 👍满意 / 👎不行（可写一句话理由）；下次生成会参考本地评价</li>
         <li>限流 / 超时时状态区会出现「重试」按钮</li>
       </ul>
     </div>
   </div>
+  <script src="nonfollow-core.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
